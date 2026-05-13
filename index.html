@@ -186,19 +186,42 @@
   mark{ background:linear-gradient(120deg,transparent 0%,var(--orange-100) 30%,var(--orange-100) 70%,transparent 100%); color:var(--orange-600); font-weight:600; padding:0 4px; border-radius:3px; }
 
   /* Print */
+  @page { size: A4; margin: 14mm 12mm; }
   @media print {
-    body::before{ display:none; }
-    body * { visibility: hidden; }
-    #printArea, #printArea * { visibility: visible; }
-    #printArea { position: absolute; left: 0; top: 0; width: 100%; padding: 20px; font-size: 12pt; color: #000; background:#fff; }
+    /* Reset toàn cục để không sót trang trống do layout cao */
+    html, body { height: auto !important; min-height: 0 !important; overflow: visible !important; background:#fff !important; }
+    body::before, body::after { display:none !important; content:none !important; }
+
+    /* Ẩn HẲN mọi nội dung gốc — chỉ chừa #printArea (display:none thay vì visibility:hidden để không chiếm chỗ) */
+    body > *:not(#printArea) { display: none !important; }
+
+    /* In bình thường theo luồng tài liệu, không absolute */
+    #printArea {
+      display: block !important;
+      position: static !important;
+      left: auto; top: auto;
+      width: 100%;
+      padding: 0;
+      margin: 0;
+      font-size: 11pt;
+      color: #000;
+      background: #fff;
+      box-shadow: none;
+    }
+    #printArea * { color:#000 !important; box-shadow:none !important; text-shadow:none !important; }
+
     .no-print { display: none !important; }
-    .print-table { width: 100%; border-collapse: collapse; }
-    .print-table th, .print-table td { border: 1px solid #1a3a5c; padding: 6px 8px; text-align: left; }
-    .print-table th { background:#0f2744; color:#fff; }
-    .print-table .num { text-align: right; font-family:monospace; }
-    .print-header { text-align: center; margin-bottom: 16px; border-bottom:3px solid #ff6b35; padding-bottom:12px; }
-    .print-header h1 { font-size: 18pt; font-weight: 800; color:#0f2744; }
-    .print-sig { margin-top: 40px; display: flex; justify-content: space-around; }
+    .print-table { width: 100%; border-collapse: collapse; page-break-inside: auto; }
+    .print-table tr { page-break-inside: avoid; page-break-after: auto; }
+    .print-table thead { display: table-header-group; }
+    .print-table tfoot { display: table-footer-group; }
+    .print-table th, .print-table td { border: 1px solid #1a3a5c; padding: 5px 7px; text-align: left; font-size: 10.5pt; }
+    .print-table th { background:#0f2744 !important; color:#fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .print-table .num { text-align: right; font-family:monospace; white-space: nowrap; }
+    .print-header { text-align: center; margin-bottom: 14px; border-bottom:3px solid #ff6b35; padding-bottom:10px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .print-header h1 { font-size: 17pt; font-weight: 800; color:#0f2744 !important; }
+    .print-sig { margin-top: 36px; display: flex; justify-content: space-around; page-break-inside: avoid; }
+    .print-section { page-break-inside: avoid; }
   }
 
   @media (max-width:768px){
@@ -836,6 +859,28 @@ const escHtml = s => (s||'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>
    Đơn vị tiền theo đv định mức (đ/viên, đ/kg, đ/m3, đ/ca, đ/công...)
    ============================================================ */
 const DEFAULT_PRICES = [
+  // ===== OVERRIDE ưu tiên cao (đặt trước các keyword generic) =====
+  // Fibrô-xi-măng và các tấm lợp có chữ "xi măng" — phải ưu tiên trước "xi măng" generic
+  { kw: ['fibrôximăng','fibroximang','fibrô xi măng','fibro xi măng','tấm fibro','tấm fibrô','tấm lợp xi măng','tấm lợp fibrô','tấm lợp fibro'], price: 65000   },
+  // Đá ốp lát chuyên dụng — phải ưu tiên trước "đá " generic
+  { kw: ['đá granit tự nhiên','đá granite tự nhiên'],         price: 850000  },
+  { kw: ['đá cẩm thạch','đá hoa cương','marble'],             price: 1200000 },
+  { kw: ['đá ốp','đá lát'],                                   price: 600000  },
+  { kw: ['đá mài'],                                           price: 25000   },
+
+  // Máy/phương tiện có chữ "nước" — phải ưu tiên trước "nước" generic 15đ
+  { kw: ['máy bơm nước động cơ diezel','máy bơm nước động cơ điêzen','máy bơm nước điêzen'], price: 450000 }, // đ/ca
+  { kw: ['máy bơm nước áp lực','máy bơm áp lực xói nước'],    price: 350000  },
+  { kw: ['máy bơm nước'],                                     price: 200000  },  // đ/ca
+  { kw: ['tàu cấp nước'],                                     price: 7500000 },  // đ/ca
+  { kw: ['sà lan chở nước','salan chở nước'],                 price: 1500000 },  // đ/ca
+  { kw: ['ôtô chở nước','ô tô chở nước','xe chở nước','xe stéc nước'], price: 1800000 }, // đ/ca
+  { kw: ['ôtô tưới nước 16','ô tô tưới nước 16'],             price: 2500000 },  // 16 m³
+  { kw: ['ôtô tưới nước 10','ô tô tưới nước 10'],             price: 2000000 },  // 10 m³
+  { kw: ['ôtô tưới nước','ô tô tưới nước','xe tưới nước'],    price: 1500000 },  // 5 m³ mặc định
+  { kw: ['thủy tinh nước','thuỷ tinh nước','silicat natri'],  price: 30000   },  // đ/kg
+  { kw: ['đào bụi dừa nước','phát bụi','phát dứa'],           price: 380000  },  // đ/công (nhân công)
+
   // ===== ĐÁ =====
   { kw: ['đá hộc'],                                           price: 300000  },
   { kw: ['đá dăm 1x2','đá 1x2'],                              price: 420000  },
@@ -868,14 +913,142 @@ const DEFAULT_PRICES = [
   { kw: ['vữa'],                                              price: 1200000 },
 
   // ===== GẠCH =====
-  { kw: ['gạch men','gạch lát','gạch ceramic','gạch ốp'],     price: 200000  },
-  { kw: ['gạch granite','gạch porcelain'],                    price: 350000  },
+  // Gạch lát/ốp (đơn vị m²) - dùng cho công tác lát nền, ốp tường
+  { kw: ['gạch granite','gạch porcelain','gạch nhân tạo'],    price: 350000  },
+  { kw: ['gạch men','gạch ceramic','gạch lát','gạch ốp'],     price: 200000  },
+  { kw: ['gạch chống nóng'],                                  price: 180000  },
+  { kw: ['gạch terrazo','gạch terazo','gạch xi măng hoa'],    price: 120000  },
+  { kw: ['gạch lá nem'],                                      price: 4500    },
+  // Gạch xây (đơn vị viên)
   { kw: ['gạch block bê tông','gạch không nung'],             price: 6500    },
   { kw: ['gạch bê tông'],                                     price: 6500    },
   { kw: ['gạch ống','gạch lỗ','gạch rỗng'],                   price: 1800    },
   { kw: ['gạch chỉ','gạch thẻ','gạch đặc','gạch tuynel'],     price: 1500    },
   { kw: ['gạch chịu lửa'],                                    price: 12000   },
+  { kw: ['gạch trang trí'],                                   price: 250000  },
   { kw: ['gạch'],                                             price: 1500    },
+
+  // ===== NGÓI =====
+  { kw: ['ngói âm dương'],                                    price: 8000    },
+  { kw: ['ngói màu','ngói tráng men'],                        price: 14000   },
+  { kw: ['ngói xi măng'],                                     price: 8000    },
+  { kw: ['ngói'],                                             price: 12000   },
+
+  // ===== ĐÁ ỐP/LÁT =====
+  { kw: ['đá granit tự nhiên','đá granite tự nhiên'],         price: 850000  },
+  { kw: ['đá cẩm thạch','đá hoa cương','marble'],             price: 1200000 },
+  { kw: ['đá ốp','đá lát'],                                   price: 600000  },
+
+  // ===== VẬT LIỆU LỢP MÁI =====
+  // Tên trong dữ liệu có thể là "Fibrôximăng" (viết liền) hoặc có dấu cách
+  { kw: ['fibrôximăng','fibroximang','fibrô xi măng','fibro xi măng','tấm fibro','tấm fibrô','tấm lợp xi măng'], price: 65000   },
+  { kw: ['tôn tráng kẽm','tôn lạnh','tôn mạ kẽm','tôn mạ màu','tôn cách nhiệt'],     price: 120000  },
+  { kw: ['tôn d=1,5','tôn d=2','tôn 1,5mm','tôn 2mm','tôn dày'],                      price: 22000   }, // đ/kg
+  { kw: ['tôn múi','tôn sóng'],                                                       price: 95000   },
+  { kw: ['tấm nhựa lấy sáng','tấm poly','polycarbonate','tấm nhựa pvc loại'],         price: 180000  },
+  { kw: ['tấm nhựa+khung xương','tấm nhựa khung'],                                    price: 220000  },
+  { kw: ['tấm nhựa','tấm pvc'],                                                       price: 85000   },
+  { kw: ['tấm bitum'],                                                                price: 220000  },
+  { kw: ['xà gồ thép'],                                                               price: 22000   }, // đ/kg
+  { kw: ['xà gồ gỗ','xà gồ'],                                                         price: 35000   }, // đ/m
+  { kw: ['ngói bò','ngói mũi hài'],                                                   price: 18000   },
+
+  // ===== MÓC / PHỤ KIỆN LỢP MÁI (đ/cái) =====
+  { kw: ['móc sắt đệm'],                                                              price: 3000    },
+  { kw: ['móc sắt','móc inox'],                                                       price: 4000    },
+  { kw: ['vít tự khoan','vít lợp','vít mạ kẽm'],                                      price: 1500    },
+
+  // ===== SƠN / HOÀN THIỆN =====
+  { kw: ['bột bả','bột trét'],                                                        price: 18000   },
+  { kw: ['sơn nước nội thất'],                                                        price: 90000   },
+  { kw: ['sơn nước ngoại thất'],                                                      price: 110000  },
+  { kw: ['sơn dầu','sơn alkyd'],                                                      price: 120000  },
+  { kw: ['sơn chống thấm'],                                                           price: 130000  },
+  { kw: ['sơn epoxy'],                                                                price: 250000  },
+  { kw: ['matít','ma tít'],                                                           price: 22000   },
+
+  // ===== CỬA / TRẦN =====
+  { kw: ['cửa nhôm','cửa kính cường lực'],                                            price: 1800000 },
+  { kw: ['cửa gỗ công nghiệp','cửa hdf'],                                             price: 2500000 },
+  { kw: ['cửa gỗ tự nhiên'],                                                          price: 4500000 },
+  { kw: ['cửa nhựa lõi thép','cửa upvc'],                                             price: 2200000 },
+  { kw: ['cửa cuốn'],                                                                 price: 1500000 },
+  { kw: ['trần thạch cao','tấm thạch cao'],                                           price: 75000   },
+  { kw: ['trần nhựa','tấm trần nhựa'],                                                price: 90000   },
+  { kw: ['khung xương thạch cao'],                                                    price: 35000   },
+
+  // ===== ĐIỆN / NƯỚC =====
+  { kw: ['ống pvc','ống nhựa pvc','ống thoát nước nhựa'],                              price: 35000   },
+  { kw: ['ống ppr'],                                                                  price: 55000   },
+  { kw: ['ống lọc nhựa'],                                                              price: 30000   },
+  { kw: ['ống ghen','ống điện'],                                                      price: 15000   },
+  { kw: ['dây điện đôi'],                                                             price: 12000   },
+  { kw: ['ổ cắm','công tắc'],                                                         price: 45000   },
+  { kw: ['van nhựa','đầu nối nhựa','khớp nối nhanh','phễu nhựa','côn nhựa','cốc nhựa','phao nhựa','van 3 chiều','zoăng tam pôn','đầu nối nhanh'], price: 25000 },
+
+  // ===== KEO / CHỐNG THẤM / VẢI ĐỊA =====
+  { kw: ['keo bituminuos','keo megapoxy','nhựa bitum','nhựa bi tum','nhựa đường','nhũ tương nhựa đường','bê tông nhựa'], price: 18000 },
+  { kw: ['keo chống mối'],                                                            price: 250000  },
+  { kw: ['keo dán','keo'],                                                            price: 120000  },
+  { kw: ['vải địa kỹ thuật'],                                                          price: 25000   },
+  { kw: ['vải bạt'],                                                                  price: 35000   },
+  { kw: ['màng kín khí'],                                                              price: 18000   },
+  { kw: ['dung dịch chống thấm','dung dịch bảo vệ','dung dịch sơn cách nhiệt'],       price: 65000   },
+
+  // ===== KHÍ / NHIÊN LIỆU CHO HÀN, KHOAN, NỔ MÌN =====
+  { kw: ['khí gas'],                                                                   price: 25000   }, // đ/kg
+  { kw: ['ô xy','oxy','ôxy'],                                                          price: 80000   }, // đ/chai
+  { kw: ['thuốc nổ amônít','thuốc nổ p113','thuốc nổ'],                                price: 80000   },
+  { kw: ['kíp vi sai','kíp điện'],                                                     price: 25000   },
+  { kw: ['dây nổ'],                                                                    price: 8000    },
+  { kw: ['củi đốt'],                                                                   price: 3000    },
+
+  // ===== BU LÔNG / KẼM BUỘC / CÁP =====
+  { kw: ['bulông m','bu lông m','bulông','bu lông'],                                   price: 8000    }, // đ/cái
+  { kw: ['kẽm buộc','dây buộc','dây kẽm'],                                             price: 28000   }, // đ/kg
+  { kw: ['cáp thép','cáp nilon','cáp d20','cáp'],                                      price: 65000   }, // đ/m
+
+  // ===== KHUNG XƯƠNG / THÉP HỘP / VÁN KHUÔN =====
+  { kw: ['khung xương (nhôm','khung xương'],                                          price: 38000   },
+  { kw: ['thép hộp 60x120','thép hộp 50x50','thép hộp'],                              price: 22000   },
+  { kw: ['ván khuôn nhựa','ván khuôn 3mm'],                                           price: 220000  },
+  { kw: ['ván ép phủ phim','ván công nghiệp','ván ép','ván'],                         price: 250000  },
+  { kw: ['giáo công cụ'],                                                              price: 250000  },
+
+  // ===== KHOAN / RĂNG KHOAN / MŨI KHOAN =====
+  { kw: ['mũi khoan','răng khoan','đuôi choòng','cần khoan','quả đập','mũi dẫn hướng'], price: 200000 },
+
+  // ===== TẤM SÀN / TẤM TƯỜNG / TẤM MÁI (panel 3D) =====
+  { kw: ['tấm sàn','tấm tường','tấm mái','tấm lưới','tấm v-3d','tấm neoweb','tấm cách nhiệt','tấm cách âm','tấm lưới chống chói','tấm ốp','tấm bê tông','tấm lót'], price: 180000 },
+
+  // ===== CỌC / TRE / TÀ VẸT =====
+  { kw: ['cọc bê tông dự ứng lực','cọc cừ máng'],                                      price: 350000  },
+  { kw: ['cọc ống bê tông','cọc ống thép'],                                            price: 280000  },
+  { kw: ['cọc tre','cọc gỗ','cọc tràm'],                                                price: 25000   },
+  { kw: ['tà vẹt'],                                                                    price: 350000  },
+  { kw: ['cây chống','cột chống','gỗ chống','gỗ kê','gỗ chèn','gỗ nẹp','gỗ làm khe','gỗ sàn thao tác','gỗ ván cầu','gỗ đà'], price: 4500000 },
+  { kw: ['nêm neo cáp','lưới thép làm đầu đốc','sắt đệm','lưỡi cắt','dây thừng','dây tín hiệu','dây nổ chịu nước'], price: 35000 },
+
+  // ===== ĐÁ MÀI / BỘT =====
+  { kw: ['đá mài'],                                                                    price: 25000   },
+  { kw: ['bột đá'],                                                                    price: 4500    },
+  { kw: ['bột thạch anh'],                                                              price: 18000   },
+  { kw: ['bột mầu','bột màu'],                                                          price: 35000   },
+
+  // ===== TRẠM TRỘN / HỖN HỢP =====
+  { kw: ['hỗn hợp bê tông cfg','hỗn hợp tro xỉ'],                                       price: 1100000 },
+  { kw: ['đất cấp phối'],                                                              price: 180000  },
+
+  // ===== ĐINH / SƠN PHỦ chi tiết =====
+  { kw: ['sơn lót ngoại thất'],                                                        price: 80000   },
+  { kw: ['sơn lót nội thất','sơn lót'],                                                price: 70000   },
+  { kw: ['sơn phủ ngoại thất','sơn phủ'],                                              price: 110000  },
+  { kw: ['sơn phủ nội thất'],                                                          price: 90000   },
+  { kw: ['sơn cách nhiệt'],                                                            price: 250000  },
+  { kw: ['sơn dẻo nhiệt'],                                                              price: 95000   },
+
+  // ===== NGÓI cụ thể =====
+  { kw: ['ngói bò','ngói mũi hài'],                                                    price: 18000   },
 
   // ===== THÉP =====
   { kw: ['thép cuộn','thép d6','thép d8','thép phi 6','thép phi 8'], price: 17000 },
@@ -900,7 +1073,11 @@ const DEFAULT_PRICES = [
   { kw: ['nước'],                                             price: 15      },
   { kw: ['sơn lót'],                                          price: 70000   },
   { kw: ['sơn'],                                              price: 90000   },
-  { kw: ['đinh'],                                             price: 28000   },
+  // ĐINH — phân biệt theo đơn vị/loại
+  { kw: ['đinh tán','đinh đỉa','đinh crămpông'],              price: 2500    },  // đ/cái
+  { kw: ['đinh, đinh vít','đinh đinh vít'],                   price: 1500    },  // đ/cái (đóng tấm lợp)
+  { kw: ['đinh vấu','đinh mũ','đinh các loại','đinh 10','đinh 6'], price: 28000 }, // đ/kg
+  { kw: ['đinh'],                                             price: 28000   },  // đ/kg mặc định
   { kw: ['bu lông','bu-lông'],                                price: 35000   },
   { kw: ['ô xy','oxy'],                                       price: 80000   },
   { kw: ['khí gas','gas'],                                    price: 30000   },
@@ -983,6 +1160,69 @@ const DEFAULT_PRICES = [
   { kw: ['tàu kéo'],                                          price: 4000000 },
   { kw: ['máy'],                                              price: 500000  },
 
+  // ===== MÁY CHUYÊN DỤNG ĐƯỜNG THUỶ / CƠ KHÍ NẶNG (audit v7) =====
+  { kw: ['canô','ca nô','cano'],                              price: 1800000 },  // đ/ca
+  { kw: ['tàu phục vụ'],                                      price: 8000000 },
+  { kw: ['tàu cấp dầu'],                                      price: 7500000 },
+  { kw: ['tàu công tác','tàu kéo'],                           price: 4500000 },
+  { kw: ['tàu'],                                              price: 4000000 },
+  { kw: ['trạm trộn'],                                        price: 4000000 },
+  { kw: ['trạm lặn'],                                         price: 5000000 },
+  { kw: ['cẩu nổi'],                                          price: 5500000 },
+  { kw: ['tời điện 5','tời điện 5t'],                         price: 500000  },
+  { kw: ['tời điện 3'],                                       price: 380000  },
+  { kw: ['tời điện 2'],                                       price: 280000  },
+  { kw: ['tời điện 1,5','tời điện 1.5'],                      price: 220000  },
+  { kw: ['tời điện'],                                         price: 280000  },
+  { kw: ['búa rung 170','búa rung 200'],                      price: 4000000 },
+  { kw: ['búa rung 50','búa rung 70','búa rung 90'],          price: 2200000 },
+  { kw: ['búa rung'],                                         price: 2500000 },
+  { kw: ['búa căn khí nén','búa cắn khí nén'],                price: 1000000 },
+  { kw: ['búa đóng cọc'],                                     price: 3500000 },
+  { kw: ['búa'],                                              price: 800000  },
+  { kw: ['bơm chân không'],                                   price: 350000  },
+  { kw: ['xe bơm bê tông'],                                   price: 3500000 },
+  { kw: ['kích 500'],                                         price: 500000  },
+  { kw: ['kích 250'],                                         price: 350000  },
+  { kw: ['kích'],                                             price: 300000  },
+  { kw: ['tổ hợp dàn khoan','dàn khoan'],                     price: 5000000 },
+  { kw: ['gầu đào','gầu ngoạm','gầu xúc'],                    price: 80000   }, // phụ kiện thay thế
+  { kw: ['máy cuốc'],                                         price: 1800000 },
+
+  // ===== VẬT LIỆU CHUYÊN DỤNG / ĐẶC BIỆT (audit v7) =====
+  { kw: ['hỗn hợp bê tông cfg','bê tông cfg','cfg'],          price: 1100000 }, // đ/m³
+  { kw: ['đất dính','đất nguyên thổ'],                        price: 80000   }, // đ/m³
+  { kw: ['đất sét'],                                          price: 100000  }, // đ/m³
+  { kw: ['đất cấp phối','cấp phối đá dăm'],                   price: 180000  },
+  { kw: ['đất'],                                              price: 50000   }, // đất đào đắp generic
+  { kw: ['nhũ tương gốc axít','nhũ tương axít','nhũ tương'],  price: 15000   }, // đ/kg
+  { kw: ['dầu bôi','dầu nhờn','dầu máy'],                     price: 35000   }, // đ/kg
+  { kw: ['dầu thuỷ lực','dầu thủy lực'],                      price: 45000   },
+  { kw: ['mỡ các loại','mỡ bôi trơn','mỡ bò'],                price: 45000   }, // đ/kg
+  { kw: ['mỡ'],                                               price: 45000   },
+  { kw: ['đồng hồ áp lực','đồng hồ đo áp'],                   price: 250000  }, // đ/cái
+  { kw: ['đồng hồ'],                                          price: 350000  },
+  { kw: ['ống cao su cao áp'],                                price: 85000   }, // đ/m
+  { kw: ['ống cao su'],                                       price: 45000   },
+  { kw: ['ống thép'],                                         price: 95000   },
+  { kw: ['ống hút','ống xả'],                                 price: 65000   },
+  { kw: ['ống'],                                              price: 35000   },
+  { kw: ['cát nhân tạo','cát xay'],                           price: 380000  },
+  { kw: ['phụ gia siêu dẻo','phụ gia hoá dẻo'],               price: 35000   },
+  { kw: ['phụ gia'],                                          price: 25000   },
+  { kw: ['than'],                                             price: 4500    }, // đ/kg
+  { kw: ['gas','khí gas'],                                    price: 35000   }, // đ/kg (gas đốt)
+  { kw: ['nhiên liệu'],                                       price: 25000   },
+
+  // ===== LAO ĐỘNG — CẤP BẬC THỢ (audit v7) =====
+  // Tên rút gọn dạng "≤ 3", "> 3", "Đào gốc cây" cho công tác đặc thù
+  { kw: ['nhân công bậc 7','thợ bậc 7','bậc 7'],              price: 480000  },
+  { kw: ['nhân công bậc 5','thợ bậc 5','bậc 5'],              price: 400000  },
+  { kw: ['nhân công bậc 4','thợ bậc 4','bậc 4'],              price: 360000  },
+  { kw: ['nhân công bậc 3','thợ bậc 3','bậc 3','≤ 3','>= 3','> 3','>3','<= 3'], price: 320000  },
+  { kw: ['đào gốc cây','phát rừng','chặt cây'],               price: 380000  },
+  { kw: ['nhân công','thợ'],                                  price: 360000  },
+
   // ===== Lao động chung (cuối cùng) =====
   { kw: ['công'],                                             price: 360000  },
 ];
@@ -1047,16 +1287,86 @@ const MORTAR_MIX = {
   'M200': { xm: 467, cat: 1.050 }
 };
 
-function guessPrice(name) {
+function guessPrice(name, unit, context) {
   const n = (name||'').toLowerCase().trim();
+  const u = (unit||'').toLowerCase().trim();
+  const ctx = (context||'').toLowerCase();
   if (!n) return 0;
+
+  // ===== Context-aware: phân biệt gạch lát/ốp vs gạch xây =====
+  if (n === 'gạch' || n.startsWith('gạch ') || n === 'ngói') {
+    const isLat   = ctx.includes('lát') || ctx.includes('ốp') || ctx.includes('lat ') || ctx.includes('op ');
+    const isM2    = u.includes('m2') || u.includes('m²');
+    const isVien  = u.includes('viên') || u.includes('vien');
+    const isLop   = ctx.includes('lợp') || ctx.includes('ngói') || ctx.includes('mái');
+
+    // Ngói lợp mái
+    if (n.includes('ngói') || isLop) {
+      if (ctx.includes('âm dương')) return 8000;
+      if (ctx.includes('màu') || ctx.includes('tráng men')) return 14000;
+      if (ctx.includes('xi măng')) return 8000;
+      return 12000;
+    }
+
+    // Gạch lát nền / ốp tường (đơn vị m²)
+    if (isLat || isM2) {
+      if (ctx.includes('granit') || ctx.includes('granite') || ctx.includes('porcelain')) return 350000;
+      if (ctx.includes('cẩm thạch') || ctx.includes('hoa cương') || ctx.includes('marble')) return 1200000;
+      if (ctx.includes('terrazo') || ctx.includes('terazo') || ctx.includes('xi măng hoa')) return 120000;
+      if (ctx.includes('chỉ') || ctx.includes('thẻ') || ctx.includes('lá nem')) return 4500;
+      // Mặc định: gạch ceramic/men lát nền
+      return 200000;
+    }
+
+    // Gạch xây (đơn vị viên)
+    if (isVien) {
+      if (ctx.includes('ống') || ctx.includes('rỗng') || ctx.includes('lỗ')) return 1800;
+      if (ctx.includes('block') || ctx.includes('không nung') || ctx.includes('bê tông')) return 6500;
+      if (ctx.includes('chịu lửa')) return 12000;
+      return 1500;
+    }
+  }
+
+  // ===== Xi măng trắng vs PC30/PC40 — phân biệt rõ =====
+  if (n.includes('xi măng trắng')) return 4500;
+
+  // ===== Cát vàng vs cát đen — context lát/trát hay san lấp =====
+  if (n === 'cát' || n.startsWith('cát ')) {
+    if (n.includes('vàng')) return 450000;
+    if (n.includes('đen') || n.includes('san lấp')) return 120000;
+    if (n.includes('mịn') || n.includes('đúc')) return 380000;
+    // Mặc định: trong xây/trát/lát → cát vàng
+    if (ctx.includes('xây') || ctx.includes('trát') || ctx.includes('lát') ||
+        ctx.includes('vữa') || ctx.includes('bê tông')) return 450000;
+    return 450000;
+  }
+
+  // ===== Nước — phân biệt theo đơn vị (lít vs m³) =====
+  // "Nước" tinh khiết: ~15đ/lít, ~15.000đ/m³
+  if (n === 'nước' || n === 'nước ngọt' || n === 'nước thi công' || n === 'nước sạch') {
+    if (u.includes('m3') || u.includes('m³')) return 15000;
+    return 15; // đ/lít
+  }
+
+  // ===== Đinh — phân biệt theo đơn vị (cái vs kg) =====
+  if (n.includes('đinh') && !n.includes('định')) {
+    const isCai = u.includes('cái') || u.includes('viên') || u === 'c';
+    if (isCai) {
+      if (n.includes('tán') || n.includes('đỉa') || n.includes('crămpông')) return 2500;
+      return 1500;  // đinh lợp tấm, đinh đóng — đ/cái
+    }
+    // mặc định kg
+    return 28000;
+  }
+
+  // ===== Default keyword-match =====
   for (const p of DEFAULT_PRICES) {
     for (const k of p.kw) if (n.includes(k)) return p.price;
   }
   return 50000;
 }
 
-const PRICE_VERSION = '2025-v2';  // bump khi cập nhật bảng giá mặc định
+const PRICE_VERSION = '2025-v7';  // v7: fix bug nước→15đ cho máy bơm/tàu/sà lan + thêm 60 keyword máy chuyên dụng/vật liệu/cấp bậc thợ
 function loadPrices() {
   try {
     const v = localStorage.getItem('dm_prices_version');
@@ -1082,6 +1392,69 @@ function resetPrices() {
 }
 
 // ---------- LOAD COMPACT DATA & EXPAND ----------
+/* ============================================================
+   MERGE SPLIT VARIANTS — gộp biến thể chỉ có vật liệu với biến thể
+   chỉ có nhân công/máy của cùng một công tác (lỗi parse Excel).
+   Quy tắc:
+   • Trong cùng group: nếu có 2 variants có "core label" giống nhau
+     (sau khi bỏ phần "Tên công tác - " đầu) thì gộp materials.
+   • Giữ variant có code chuẩn (đầy đủ), thêm vật tư/NC từ variant kia.
+   ============================================================ */
+function mergeSplitVariants() {
+  const norm = s => (s||'').toLowerCase()
+    .replace(/^lợp\s+m\s*ái\s*/,'lợp mái ')
+    .replace(/\s+/g,' ').trim();
+  // Lấy đặc tính cuối (sau dấu " - " cuối cùng): "Tôn múi / Chiều dài ≤2m"
+  const tail = label => {
+    const s = norm(label);
+    const parts = s.split(' - ');
+    return parts.length > 1 ? parts.slice(1).join(' - ').trim() : s;
+  };
+
+  let mergedCount = 0;
+  for (const ch of DATA.chapters) {
+    for (const g of ch.groups) {
+      // Phân loại theo tail
+      const buckets = {};
+      g.variants.forEach((v, idx) => {
+        const key = tail(v.label);
+        (buckets[key] = buckets[key] || []).push({ v, idx });
+      });
+      const toRemove = new Set();
+      for (const key in buckets) {
+        const grp = buckets[key];
+        if (grp.length < 2) continue;
+        // Tìm "primary" = variant có nhiều type nhất (mat+lab+machine) HOẶC nhiều material nhất
+        grp.sort((a,b) => {
+          const ta = new Set(a.v.materials.map(m=>m.type)).size;
+          const tb = new Set(b.v.materials.map(m=>m.type)).size;
+          if (tb !== ta) return tb - ta;
+          return b.v.materials.length - a.v.materials.length;
+        });
+        const primary = grp[0].v;
+        const haveTypes = new Set(primary.materials.map(m=>m.type));
+        // Gộp các loại còn thiếu từ secondary
+        for (let i=1; i<grp.length; i++) {
+          const sec = grp[i].v;
+          for (const m of sec.materials) {
+            // Tránh trùng lặp tên trong primary
+            const dup = primary.materials.some(x =>
+              x.name === m.name && x.type === m.type && Math.abs((x.qty||0)-(m.qty||0))<1e-6
+            );
+            if (!dup) primary.materials.push({ ...m });
+          }
+          toRemove.add(grp[i].idx);
+          mergedCount++;
+        }
+      }
+      if (toRemove.size) {
+        g.variants = g.variants.filter((_, i) => !toRemove.has(i));
+      }
+    }
+  }
+  if (mergedCount) console.log('[merge] gộp', mergedCount, 'biến thể tách rời (vật liệu + NC).');
+}
+
 function init() {
   const raw = document.getElementById('dinhMucData').textContent;
   const compact = JSON.parse(raw);
@@ -1099,6 +1472,9 @@ function init() {
       }))
     }))
   };
+
+  // Merge split variants (Excel chia định mức thành 2 bảng vật liệu/NC)
+  mergeSplitVariants();
 
   // Build flat search index
   DATA.chapters.forEach((ch, ci) => {
@@ -1298,7 +1674,7 @@ function selectVariant(ci, gi, vi) {
   document.getElementById('selName').textContent = currentItem.groupName;
   document.getElementById('selLabel').textContent = currentItem.label;
   document.getElementById('selUnit').textContent = currentItem.unit;
-  document.getElementById('unitTag').textContent = simpleUnit(currentItem.unit);
+  document.getElementById('unitTag').textContent = baseUnit(currentItem.unit);
   document.getElementById('dimV').value = '';
 
   // Smart defaults based on unit type
@@ -1324,7 +1700,30 @@ function selectVariant(ci, gi, vi) {
 }
 
 function simpleUnit(u) {
-  return (u||'').replace(/^1\s*/,'').replace('m3','m³').replace('m2','m²');
+  if (!u) return '';
+  // Chỉ strip tiền tố "1 " khi CÓ khoảng trắng (vd "1 cây" → "cây"). Không động vào "100m2".
+  return u.replace(/^1\s+/,'').replace(/m3\b/g,'m³').replace(/m2\b/g,'m²');
+}
+
+/* Trả về đơn vị "cơ bản" mà người dân hiểu (10m², 100m² → m²; 100m → m). */
+function baseUnit(u) {
+  if (!u) return '';
+  const t = u.toLowerCase().trim();
+  if (/^100\s*m\s*3/.test(t) || /^100\s*m³/.test(t)) return 'm³';
+  if (/^100\s*m\s*2/.test(t) || /^100\s*m²/.test(t)) return 'm²';
+  if (/^100\s*m\b/.test(t)) return 'm';
+  if (/^10\s*m\s*3/.test(t)) return 'm³';
+  if (/^10\s*m\s*2/.test(t)) return 'm²';
+  if (/^10\s*m\b/.test(t)) return 'm';
+  return simpleUnit(u);
+}
+
+/* Trả về hệ số chia (định mức/100m² → V phải chia 100). */
+function unitScale(u) {
+  const t = (u||'').toLowerCase().trim();
+  if (/^100/.test(t)) return 100;
+  if (/^10\b/.test(t) || /^10\s*m/.test(t)) return 10;
+  return 1;
 }
 
 function closeCalc() {
@@ -1362,10 +1761,11 @@ function applyMortarTransform() {
     }
   }
 
-  // Apply saved prices / guess
+  // Apply saved prices / guess (context-aware: tên công tác + nhãn để chọn đúng giá)
+  const ctxText = `${currentItem.groupName||''} ${currentItem.label||''}`;
   currentItem.materials = expanded.map(m => {
     const key = m.name.toLowerCase().trim();
-    const price = savedPrices[key] !== undefined ? savedPrices[key] : guessPrice(m.name);
+    const price = savedPrices[key] !== undefined ? savedPrices[key] : guessPrice(m.name, m.unit, ctxText);
     return { ...m, price, _key: key };
   });
 
@@ -1405,68 +1805,122 @@ function printQuote() {
   const mortarNote = document.getElementById('mortarSelectorWrap').classList.contains('hidden')
     ? '' : `<p><b>Mác vữa:</b> ${document.getElementById('mortarGrade').value || '(giữ nguyên)'}</p>`;
 
-  document.getElementById('printArea').style.display = 'block';
-  document.getElementById('printArea').innerHTML = `
-    <div class="print-header">
-      <h1>BẢNG BÁO GIÁ / DỰ TOÁN VẬT TƯ</h1>
-      <p style="margin-top:4px">Theo Định mức 10/2019/TT-BXD - Bộ Xây dựng</p>
-      <p style="font-size:10pt;color:#555">Ngày lập: ${dateStr}</p>
+  // ============================================================
+  // BULLETPROOF: Mở cửa sổ mới chỉ chứa report — không bị xung đột
+  // CSS với layout chính (sidebar, dark mode, sticky header, ...)
+  // ============================================================
+  const reportHTML = `<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Báo giá - ${escHtml(currentItem.code)} - ${dateStr}</title>
+<style>
+  @page { size: A4; margin: 14mm 12mm; }
+  * { box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; color:#000; background:#fff; margin:0; padding:0; font-size: 11pt; line-height: 1.4; }
+  .print-header { text-align:center; margin-bottom:14px; border-bottom:3px solid #ff6b35; padding-bottom:10px; }
+  .print-header h1 { font-size:17pt; font-weight:800; color:#0f2744; margin:0 0 4px 0; }
+  .print-header p { margin: 2px 0; }
+  .meta { width:100%; margin-bottom:12px; font-size:11pt; border-collapse:collapse; }
+  .meta td { padding:3px 4px; vertical-align:top; }
+  table.print-table { width:100%; border-collapse:collapse; margin-top:8px; }
+  table.print-table th, table.print-table td { border:1px solid #1a3a5c; padding:5px 7px; text-align:left; font-size:10.5pt; }
+  table.print-table th { background:#0f2744; color:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  table.print-table .num { text-align:right; font-family: 'Consolas', 'Courier New', monospace; white-space:nowrap; }
+  table.print-table tr { page-break-inside: avoid; }
+  table.print-table thead { display: table-header-group; }
+  table.print-table tfoot { display: table-row-group; }
+  table.print-table tfoot tr { background:#f3e8ff; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  table.print-table tfoot td { font-weight:600; }
+  .print-sig { margin-top:36px; display:flex; justify-content:space-around; page-break-inside: avoid; }
+  .print-sig > div { text-align:center; min-width:200px; }
+  .print-sig p { margin: 2px 0; }
+  .note { font-size:9pt; color:#555; margin-top:12px; font-style:italic; }
+  @media print {
+    .no-print { display:none !important; }
+  }
+  .toolbar { position:fixed; top:8px; right:8px; background:#0f2744; color:#fff; padding:8px 12px; border-radius:6px; font-size:13px; box-shadow:0 4px 12px rgba(0,0,0,.2); z-index:9999; }
+  .toolbar button { background:#ff6b35; color:#fff; border:0; padding:6px 12px; border-radius:4px; cursor:pointer; font-weight:600; margin-left:6px; }
+  .toolbar button:hover { background:#ff8255; }
+</style>
+</head>
+<body>
+  <div class="toolbar no-print">
+    💡 Nhấn <button onclick="window.print()">🖨️ In ngay</button>
+    <button onclick="window.close()" style="background:#64748b">✖ Đóng</button>
+  </div>
+
+  <div class="print-header">
+    <h1>BẢNG BÁO GIÁ / DỰ TOÁN VẬT TƯ</h1>
+    <p>Theo Định mức 10/2019/TT-BXD - Bộ Xây dựng</p>
+    <p style="font-size:10pt;color:#555">Ngày lập: ${dateStr}</p>
+  </div>
+
+  <table class="meta">
+    <tr><td><b>Mã định mức:</b> ${escHtml(currentItem.code)}</td>
+        <td><b>Khối lượng:</b> ${(V*unitScale(currentItem.unit)).toLocaleString('vi-VN',{maximumFractionDigits:3})} ${baseUnit(currentItem.unit)}</td></tr>
+    <tr><td colspan="2"><b>Công tác:</b> ${escHtml(currentItem.groupName)}</td></tr>
+    <tr><td colspan="2"><b>Đặc tính:</b> ${escHtml(currentItem.label)}</td></tr>
+  </table>
+  ${mortarNote}
+
+  <table class="print-table">
+    <thead>
+      <tr>
+        <th style="width:30px">TT</th>
+        <th>Tên vật tư / công việc</th>
+        <th>Loại</th>
+        <th>ĐM/đv</th>
+        <th>ĐVT</th>
+        <th>Số lượng</th>
+        <th>Đơn giá (đ)</th>
+        <th>Thành tiền (đ)</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+    <tfoot>
+      <tr><td colspan="7" class="num"><b>Cộng vật liệu:</b></td><td class="num"><b>${fmt(sumMat)}</b></td></tr>
+      <tr><td colspan="7" class="num"><b>Cộng nhân công:</b></td><td class="num"><b>${fmt(sumLab)}</b></td></tr>
+      <tr><td colspan="7" class="num"><b>Cộng máy thi công:</b></td><td class="num"><b>${fmt(sumMac)}</b></td></tr>
+      <tr><td colspan="7" class="num" style="font-size:13pt"><b>TỔNG CỘNG:</b></td><td class="num" style="font-size:13pt"><b>${fmt(total)} đ</b></td></tr>
+    </tfoot>
+  </table>
+
+  <p class="note">
+    Ghi chú: Đơn giá nhập theo giá thị trường địa phương do người sử dụng cung cấp. Báo giá chỉ mang tính tham khảo, có thể chênh lệch ±5-15% so với thực tế thi công.
+  </p>
+
+  <div class="print-sig">
+    <div>
+      <p><b>NGƯỜI LẬP</b></p>
+      <p style="font-style:italic;font-size:9pt">(Ký, ghi rõ họ tên)</p>
+      <div style="height:50px"></div>
     </div>
-
-    <table style="width:100%;margin-bottom:12px;font-size:11pt">
-      <tr><td><b>Mã định mức:</b> ${escHtml(currentItem.code)}</td>
-          <td><b>Khối lượng:</b> ${V.toFixed(3)} ${simpleUnit(currentItem.unit)}</td></tr>
-      <tr><td colspan="2"><b>Công tác:</b> ${escHtml(currentItem.groupName)}</td></tr>
-      <tr><td colspan="2"><b>Đặc tính:</b> ${escHtml(currentItem.label)}</td></tr>
-    </table>
-    ${mortarNote}
-
-    <table class="print-table">
-      <thead>
-        <tr>
-          <th style="width:30px">TT</th>
-          <th>Tên vật tư / công việc</th>
-          <th>Loại</th>
-          <th>ĐM/đv</th>
-          <th>ĐVT</th>
-          <th>Số lượng</th>
-          <th>Đơn giá (đ)</th>
-          <th>Thành tiền (đ)</th>
-        </tr>
-      </thead>
-      <tbody>${rows}</tbody>
-      <tfoot>
-        <tr><td colspan="7" class="num"><b>Cộng vật liệu:</b></td><td class="num"><b>${fmt(sumMat)}</b></td></tr>
-        <tr><td colspan="7" class="num"><b>Cộng nhân công:</b></td><td class="num"><b>${fmt(sumLab)}</b></td></tr>
-        <tr><td colspan="7" class="num"><b>Cộng máy thi công:</b></td><td class="num"><b>${fmt(sumMac)}</b></td></tr>
-        <tr style="background:#f3e8ff"><td colspan="7" class="num" style="font-size:13pt"><b>TỔNG CỘNG:</b></td><td class="num" style="font-size:13pt"><b>${fmt(total)} đ</b></td></tr>
-      </tfoot>
-    </table>
-
-    <p style="font-size:9pt;color:#666;margin-top:12px;font-style:italic">
-      Ghi chú: Đơn giá nhập theo giá thị trường địa phương do người sử dụng cung cấp. Báo giá chỉ mang tính tham khảo, có thể chênh lệch ±5-15% so với thực tế thi công.
-    </p>
-
-    <div class="print-sig">
-      <div style="text-align:center">
-        <p><b>NGƯỜI LẬP</b></p>
-        <p style="font-style:italic;font-size:9pt">(Ký, ghi rõ họ tên)</p>
-        <div style="height:50px"></div>
-      </div>
-      <div style="text-align:center">
-        <p><b>CHỦ NHÀ / NHẬN BÁO GIÁ</b></p>
-        <p style="font-style:italic;font-size:9pt">(Ký, ghi rõ họ tên)</p>
-        <div style="height:50px"></div>
-      </div>
+    <div>
+      <p><b>CHỦ NHÀ / NHẬN BÁO GIÁ</b></p>
+      <p style="font-style:italic;font-size:9pt">(Ký, ghi rõ họ tên)</p>
+      <div style="height:50px"></div>
     </div>
-  `;
+  </div>
 
-  window.print();
+<scr` + `ipt>
+  // Tự động mở print dialog sau khi nội dung được vẽ xong
+  window.addEventListener('load', () => {
+    setTimeout(() => window.print(), 250);
+  });
+</scr` + `ipt>
+</body>
+</html>`;
 
-  // Hide after print
-  setTimeout(() => {
-    document.getElementById('printArea').style.display = 'none';
-  }, 500);
+  const printWin = window.open('', '_blank', 'width=900,height=700');
+  if (!printWin) {
+    alert('Trình duyệt đã chặn cửa sổ mới. Vui lòng cho phép pop-up và thử lại.');
+    return;
+  }
+  printWin.document.open();
+  printWin.document.write(reportHTML);
+  printWin.document.close();
+  printWin.focus();
 }
 
 /* ============================================================
@@ -1478,7 +1932,7 @@ function copyShoppingList() {
   const lines = [
     '📋 DANH SÁCH MUA VẬT TƯ',
     'Công tác: ' + currentItem.groupName,
-    'Khối lượng: ' + V.toFixed(3) + ' ' + simpleUnit(currentItem.unit),
+    'Khối lượng: ' + (V*unitScale(currentItem.unit)).toLocaleString('vi-VN',{maximumFractionDigits:3}) + ' ' + baseUnit(currentItem.unit),
     '─'.repeat(40)
   ];
   let total = 0;
@@ -1511,30 +1965,37 @@ function fallbackCopy(text) {
 
 // ---------- VOLUME & CALC ----------
 function getVolume() {
-  const manual = parseFloat(document.getElementById('dimV').value);
-  if (!isNaN(manual) && manual > 0) return manual;
-
   const L = parseFloat(document.getElementById('dimL').value) || 0;
   const W = parseFloat(document.getElementById('dimW').value) || 0;
   const H = parseFloat(document.getElementById('dimH').value) || 0;
 
-  if (!currentItem) return L*W*H;
-  const u = (currentItem.unit||'').toLowerCase();
+  // Nếu nhập tay khối lượng (đơn vị cơ bản m², m³, m, cây…) thì dùng trực tiếp
+  const manual = parseFloat(document.getElementById('dimV').value);
+  let baseQty;
+  if (!isNaN(manual) && manual > 0) {
+    baseQty = manual;
+  } else {
+    if (!currentItem) return L*W*H;
+    const u = (currentItem.unit||'').toLowerCase();
+    if (u.includes('m3') || u.includes('m³')) baseQty = L * W * H;
+    else if (u.includes('m2') || u.includes('m²')) baseQty = L * W;
+    else if (/(^|\s)m($|\s|\/)/.test(u)) baseQty = L;
+    else baseQty = L * W * H || 1;     // cây/cái/viên/bộ → dùng L
+  }
 
-  // Decide formula based on unit
-  if (u.includes('100m2') || u.includes('100 m2')) return (L * W) / 100;
-  if (u.includes('100m') && !u.includes('100m2') && !u.includes('100m3')) return L / 100;
-  if (u.includes('100m3')) return (L * W * H) / 100;
-  if (u.includes('m2') || u.includes('m²')) return L * W;
-  if (u.includes('m3') || u.includes('m³')) return L * W * H;
-  if (u === 'm' || u.startsWith('m ') || u.includes(' m')) return L;
-  return L * W * H || 1;
+  // Chuyển từ đơn vị cơ bản → đơn vị định mức: chia hệ số (100m² → /100, 10m² → /10)
+  const scale = unitScale(currentItem ? currentItem.unit : '');
+  return baseQty / scale;
 }
 
 function calculate() {
   if (!currentItem) return;
-  const V = getVolume();
-  document.getElementById('volDisplay').textContent = V.toFixed(3) + ' ' + simpleUnit(currentItem.unit);
+  const V = getVolume();                         // Lượng theo đơn vị định mức (vd 0.1 cho 10m²/100m²)
+  const scale = unitScale(currentItem.unit);
+  const totalBase = V * scale;                   // Tổng thực tế (vd 10 m²)
+  const baseU = baseUnit(currentItem.unit);
+  document.getElementById('volDisplay').textContent =
+    totalBase.toLocaleString('vi-VN',{maximumFractionDigits:3}) + ' ' + baseU;
 
   const list = document.getElementById('materialList');
   let sumMat=0, sumLab=0, sumMac=0;
@@ -1562,14 +2023,14 @@ function calculate() {
       <div class="grid grid-cols-2 gap-2 text-[11px]">
         <div>
           <div class="text-slate-500">Cần: <b>${total.toLocaleString('vi-VN',{maximumFractionDigits:3})} ${escHtml(m.unit||'')}</b></div>
-          <div class="text-slate-400">Định mức: ${m.qty}/${simpleUnit(currentItem.unit)}</div>
+          <div class="text-slate-400">Định mức: ${m.qty} ${escHtml(m.unit||'')}/${simpleUnit(currentItem.unit)}</div>
         </div>
         <div>
           <label class="text-slate-500 block">Đơn giá (đ)</label>
-          <input type="number" value="${m.price}" min="0" step="100" class="w-full px-1 py-0.5 border border-slate-300 rounded text-right text-[11px]" oninput="updPrice(${i}, this.value)" />
+          <input type="number" value="${m.price}" min="0" step="100" class="w-full px-1 py-0.5 border border-slate-300 rounded text-right text-[11px]" onchange="updPrice(${i}, this.value)" onblur="updPrice(${i}, this.value)" />
         </div>
       </div>
-      <div class="text-right text-xs font-bold mt-1 text-slate-700">= ${fmtMoney(cost)}</div>
+      <div class="row-cost text-right text-xs font-bold mt-1 text-slate-700">= ${fmtMoney(cost)}</div>
     </div>`;
   }).join('') || '<div class="text-center text-slate-400 text-xs py-4">Không có hao phí được liệt kê.</div>';
 
@@ -1641,10 +2102,35 @@ function initTheme() {
 }
 
 function updPrice(idx, val) {
+  // KHÔNG re-render toàn bộ list (sẽ làm mất focus khi gõ).
+  // Chỉ cập nhật giá + tính lại tổng + cập nhật chi tiết dòng đó.
   const p = parseFloat(val) || 0;
+  if (!currentItem || !currentItem.materials[idx]) return;
   currentItem.materials[idx].price = p;
   savePrice(currentItem.materials[idx]._key, p);
-  calculate();
+
+  const V = getVolume();
+  let sumMat=0, sumLab=0, sumMac=0;
+  const list = document.getElementById('materialList');
+
+  currentItem.materials.forEach((m, i) => {
+    const cost = m.qty * V * m.price;
+    if (m.type === 'lab') sumLab += cost;
+    else if (m.type === 'machine') sumMac += cost;
+    else sumMat += cost;
+    // Cập nhật chi phí dòng (chỉ phần text, không động vào <input>)
+    if (i === idx) {
+      const row = list.children[i];
+      if (row) {
+        const costEl = row.querySelector('.row-cost');
+        if (costEl) costEl.textContent = '= ' + fmtMoney(cost);
+      }
+    }
+  });
+
+  const total = sumMat + sumLab + sumMac;
+  refreshTotalsUI(sumMat, sumLab, sumMac, total);
+  drawChart(sumMat, sumLab, sumMac);
 }
 
 function drawChart(m, l, mc) {
